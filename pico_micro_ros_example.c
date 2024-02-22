@@ -5,24 +5,57 @@
 #include <rclc/rclc.h>
 #include <rclc/executor.h>
 #include <std_msgs/msg/int32.h>
+#include <std_msgs/msg/string.h>
 #include <rmw_microros/rmw_microros.h>
+#include <rcl/logging.h>
 
 #include "pico/stdlib.h"
 #include "pico_uart_transports.h"
 
-const uint LED_PIN = 25;
+const uint LED_PIN = 0;
 
-rcl_publisher_t publisher;
-std_msgs__msg__Int32 msg;
+rcl_publisher_t publisher, debugPublisher;
+rcl_subscription_t subscriber;
+std_msgs__msg__Int32 msgOut, msgIn;
+std_msgs__msg__String debug;
+rmw_message_info_t info;
+
+volatile int ledState = 0;
+
+void debugf(const char* format, ...){
+    char str[128];
+    
+    va_list args;
+    va_start(args, format);
+    vsprintf(str, format, args);
+    va_end(args);
+
+    rosidl_runtime_c__String data;
+    data.data = str;
+    data.size = strlen(str);
+    data.capacity = strlen(str)*sizeof(char);
+
+    debug.data = data;
+
+    rcl_ret_t ret = rcl_publish(&debugPublisher, &debug, NULL);
+}
 
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
-    rcl_ret_t ret = rcl_publish(&publisher, &msg, NULL);
-    msg.data++;
+    msgOut.data = ledState;
+    rcl_ret_t ret = rcl_publish(&publisher, &msgOut, NULL);
+}
+
+void led_callback() {
+    rcl_ret_t ret = rcl_take(&subscriber, &msgIn, &info, NULL);
+    debugf("Message callback\tstat: %d\tdata:%d", ret, msgIn.data);
+    ledState = msgIn.data;
+    gpio_put(LED_PIN, ledState);
 }
 
 int main()
 {
+    rcl_ret_t ret;
     rmw_uros_set_custom_transport(
 		true,
 		NULL,
@@ -47,7 +80,7 @@ int main()
     const int timeout_ms = 1000; 
     const uint8_t attempts = 120;
 
-    rcl_ret_t ret = rmw_uros_ping_agent(timeout_ms, attempts);
+    ret = rmw_uros_ping_agent(timeout_ms, attempts);
 
     if (ret != RCL_RET_OK)
     {
@@ -62,7 +95,19 @@ int main()
         &publisher,
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-        "pico_publisher");
+        "led_publisher");
+    rclc_publisher_init_default(
+        &debugPublisher,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, String),
+        "debug");
+    debugf("Init");
+    ret = rclc_subscription_init_default(
+        &subscriber,
+        &node,
+        ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+        "led_subscriber");    
+    debugf("Subscription created\tstat: %d", ret);
 
     rclc_timer_init_default(
         &timer,
@@ -70,12 +115,13 @@ int main()
         RCL_MS_TO_NS(1000),
         timer_callback);
 
-    rclc_executor_init(&executor, &support.context, 1, &allocator);
+    rclc_executor_init(&executor, &support.context, 2, &allocator);
     rclc_executor_add_timer(&executor, &timer);
+    ret = rclc_executor_add_subscription(
+        &executor, &subscriber, &msgIn, &led_callback, ON_NEW_DATA);
+    debugf("Callback set\tstat: %d", ret);
 
-    gpio_put(LED_PIN, 1);
-
-    msg.data = 0;
+    msgOut.data = ledState;
     while (true)
     {
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));

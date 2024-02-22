@@ -13,6 +13,7 @@
 #include "pico_uart_transports.h"
 
 const uint LED_PIN = 0;
+const uint LIMIT_NC = 8;
 
 rcl_publisher_t publisher, debugPublisher;
 rcl_subscription_t subscriber;
@@ -20,7 +21,7 @@ std_msgs__msg__Int32 msgOut, msgIn;
 std_msgs__msg__String debug;
 rmw_message_info_t info;
 
-volatile int ledState = 0;
+volatile int ledState = 1;
 
 void debugf(const char* format, ...){
     char str[128];
@@ -50,7 +51,13 @@ void led_callback() {
     rcl_ret_t ret = rcl_take(&subscriber, &msgIn, &info, NULL);
     debugf("Message callback\tstat: %d\tdata:%d", ret, msgIn.data);
     ledState = msgIn.data;
-    gpio_put(LED_PIN, ledState);
+}
+
+void irq_callback(uint pin, uint32_t event) {
+    if(pin == LIMIT_NC && gpio_get(pin) && event == GPIO_IRQ_EDGE_RISE){
+        gpio_acknowledge_irq(LIMIT_NC, GPIO_IRQ_EDGE_RISE);
+        ledState ++;
+    }
 }
 
 int main()
@@ -67,6 +74,13 @@ int main()
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    gpio_init(LIMIT_NC);
+    gpio_set_dir(LIMIT_NC, GPIO_IN);
+    gpio_pull_up(LIMIT_NC);
+
+    // gpio_set_irq_callback(&irq_callback);
+    gpio_set_irq_enabled_with_callback(LIMIT_NC, GPIO_IRQ_EDGE_RISE, true, &irq_callback);
 
     rcl_timer_t timer;
     rcl_node_t node;
@@ -125,6 +139,7 @@ int main()
     while (true)
     {
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
+        gpio_put(LED_PIN, ledState);
     }
     return 0;
 }

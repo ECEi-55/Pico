@@ -12,13 +12,19 @@
 #include "pico/stdlib.h"
 #include "pico_uart_transports.h"
 
+#include "limit.h"
+
 const uint LED_PIN = 0;
+const unsigned char LOWER_LIMIT_PIN = 8;
+const unsigned char UPPER_LIMIT_PIN = 4;
 
 rcl_publisher_t publisher, debugPublisher;
 rcl_subscription_t subscriber;
 std_msgs__msg__Int32 msgOut, msgIn;
 std_msgs__msg__String debug;
 rmw_message_info_t info;
+
+limit_t lowerLimit, upperLimit;
 
 volatile int ledState = 0;
 
@@ -53,6 +59,14 @@ void led_callback() {
     gpio_put(LED_PIN, ledState);
 }
 
+void lower_callback(){
+    debugf("Lower limit edge");
+}
+
+void upper_callback(){
+    debugf("Upper limit edge");
+}
+
 int main()
 {
     rcl_ret_t ret;
@@ -67,6 +81,9 @@ int main()
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    init_limit(&lowerLimit, LOWER_LIMIT_PIN, lower_callback);
+    init_limit(&upperLimit, UPPER_LIMIT_PIN, upper_callback);
 
     rcl_timer_t timer;
     rcl_node_t node;
@@ -125,6 +142,8 @@ int main()
     while (true)
     {
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
+        update_limit(&upperLimit);
+        update_limit(&lowerLimit);
     }
     return 0;
 }

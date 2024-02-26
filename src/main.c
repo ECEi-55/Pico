@@ -13,10 +13,15 @@
 #include "pico_uart_transports.h"
 
 #include "limit.h"
+#include "motor.h"
 
 const uint LED_PIN = 0;
 const unsigned char LOWER_LIMIT_PIN = 8;
 const unsigned char UPPER_LIMIT_PIN = 4;
+
+const unsigned char MOTOR_PWM_PIN = 18;
+const unsigned char MOTOR_FWD_PIN = 19;
+const unsigned char MOTOR_REV_PIN = 21;
 
 rcl_publisher_t publisher, debugPublisher;
 rcl_subscription_t subscriber;
@@ -25,6 +30,7 @@ std_msgs__msg__String debug;
 rmw_message_info_t info;
 
 limit_t lowerLimit, upperLimit;
+motor_t motor;
 
 volatile int ledState = 0;
 
@@ -57,6 +63,8 @@ void led_callback() {
     debugf("Message callback\tstat: %d\tdata:%d", ret, msgIn.data);
     ledState = msgIn.data;
     gpio_put(LED_PIN, ledState);
+
+    set_motor(&motor, msgIn.data / 100.0);
 }
 
 void lower_callback(){
@@ -84,6 +92,8 @@ int main()
 
     init_limit(&lowerLimit, LOWER_LIMIT_PIN, lower_callback);
     init_limit(&upperLimit, UPPER_LIMIT_PIN, upper_callback);
+
+    init_motor(&motor, MOTOR_PWM_PIN, MOTOR_FWD_PIN, MOTOR_REV_PIN);
 
     rcl_timer_t timer;
     rcl_node_t node;

@@ -1,0 +1,6 @@
+{
+    "files.associations": {
+        "*.pt": "pascal",
+        "motor.h": "c"
+    }
+}

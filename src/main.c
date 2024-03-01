@@ -12,13 +12,25 @@
 #include "pico/stdlib.h"
 #include "pico_uart_transports.h"
 
+#include "limit.h"
+#include "motor.h"
+
 const uint LED_PIN = 0;
+const unsigned char LOWER_LIMIT_PIN = 18;
+const unsigned char UPPER_LIMIT_PIN = 22;
+
+const unsigned char MOTOR_PWM_PIN = 4;
+const unsigned char MOTOR_FWD_PIN = 6;
+const unsigned char MOTOR_REV_PIN = 8;
 
 rcl_publisher_t publisher, debugPublisher;
 rcl_subscription_t subscriber;
 std_msgs__msg__Int32 msgOut, msgIn;
 std_msgs__msg__String debug;
 rmw_message_info_t info;
+
+limit_t lowerLimit, upperLimit;
+motor_t motor;
 
 volatile int ledState = 0;
 
@@ -51,6 +63,16 @@ void led_callback() {
     debugf("Message callback\tstat: %d\tdata:%d", ret, msgIn.data);
     ledState = msgIn.data;
     gpio_put(LED_PIN, ledState);
+
+    set_motor(&motor, msgIn.data / 100.0);
+}
+
+void lower_callback(){
+    debugf("Lower limit edge");
+}
+
+void upper_callback(){
+    debugf("Upper limit edge");
 }
 
 int main()
@@ -67,6 +89,11 @@ int main()
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    init_limit(&lowerLimit, LOWER_LIMIT_PIN, lower_callback);
+    init_limit(&upperLimit, UPPER_LIMIT_PIN, upper_callback);
+
+    init_motor(&motor, MOTOR_PWM_PIN, MOTOR_FWD_PIN, MOTOR_REV_PIN);
 
     rcl_timer_t timer;
     rcl_node_t node;
@@ -125,6 +152,8 @@ int main()
     while (true)
     {
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
+        update_limit(&upperLimit);
+        update_limit(&lowerLimit);
     }
     return 0;
 }

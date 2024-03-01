@@ -14,7 +14,7 @@ add_executable(applicator
     ${SourceFiles}
 )
 target_link_libraries(applicator
-    pico_stdlib
+    pico_stdlib hardware_pwm
     microros
 )
 

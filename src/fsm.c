@@ -55,6 +55,8 @@ void fsm_update(motor_t *motor, limit_t *upperLimit, limit_t *lowerLimit) {
 void fsm_signal(signal_t signal) {
     switch(signal) {
         case START:
+            if(_currentState == IDLE)
+                _change_state(ACTIVE);
             break;
         case RAISE:
             _raiseCount = 0;

@@ -1,8 +1,9 @@
 #include "motor.h"
 #include "pico/stdlib.h"
+#include <math.h>
 #include <hardware/pwm.h>
 
-#define MAX_WRAP 255
+#define MAX_WRAP 1000
 
 void init_motor(motor_t *motor, uint pwmPin, uint fwdPin, uint revPin){
     // Configure the pico pins
@@ -20,7 +21,7 @@ void init_motor(motor_t *motor, uint pwmPin, uint fwdPin, uint revPin){
     // 125MHz / (250 + 0/16) = 500kHz
     pwm_set_clkdiv_int_frac(slice, 250, 0);
     // Set count wraparound to further lower operating point
-    // Actual frequency is fc/(MAX_WRAP+1) (~2kHz with MAX_WRAP = 255)
+    // Actual frequency is fc/(MAX_WRAP+1) (~2500Hz with MAX_WRAP = 1000, chosen to match Arduino Uno output)
     pwm_set_wrap(slice, MAX_WRAP);
  
     gpio_init(fwdPin);

@@ -41,7 +41,7 @@ void set_motor(motor_t *motor, float output) {
     gpio_put(motor->_revPin, output < 0);
 
     // For PWM output take abs, cap at max, then 
-    output = abs(output);
+    output = fabs(output);
     output = output > MAX_WRAP ? MAX_WRAP : output;
     pwm_set_gpio_level(motor->_pwmPin, output * MAX_WRAP);
 }

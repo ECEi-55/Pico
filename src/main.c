@@ -16,12 +16,12 @@
 #include "motor.h"
 
 const uint LED_PIN = 0;
-const unsigned char LOWER_LIMIT_PIN = 8;
-const unsigned char UPPER_LIMIT_PIN = 4;
+const unsigned char LOWER_LIMIT_PIN = 18;
+const unsigned char UPPER_LIMIT_PIN = 22;
 
-const unsigned char MOTOR_PWM_PIN = 18;
-const unsigned char MOTOR_FWD_PIN = 19;
-const unsigned char MOTOR_REV_PIN = 21;
+const unsigned char MOTOR_PWM_PIN = 4;
+const unsigned char MOTOR_FWD_PIN = 6;
+const unsigned char MOTOR_REV_PIN = 8;
 
 rcl_publisher_t publisher, debugPublisher;
 rcl_subscription_t subscriber;

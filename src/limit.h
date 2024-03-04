@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdbool.h>
 #ifndef LIMIT_H
 #define LIMIT_H
 

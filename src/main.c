@@ -14,6 +14,7 @@
 
 #include "limit.h"
 #include "motor.h"
+#include "fsm.h"
 
 const uint LED_PIN = 0;
 const unsigned char LOWER_LIMIT_PIN = 18;
@@ -54,25 +55,32 @@ void debugf(const char* format, ...){
 
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
-    msgOut.data = ledState;
+    msgOut.data = fsm_current_state();
     rcl_ret_t ret = rcl_publish(&publisher, &msgOut, NULL);
 }
 
 void led_callback() {
     rcl_ret_t ret = rcl_take(&subscriber, &msgIn, &info, NULL);
     debugf("Message callback\tstat: %d\tdata:%d", ret, msgIn.data);
-    ledState = msgIn.data;
-    gpio_put(LED_PIN, ledState);
-
-    set_motor(&motor, msgIn.data / 100.0);
+    debugf("FSM sig sent %s", fsm_signal_name(msgIn.data));
+    fsm_signal(msgIn.data);
 }
 
 void lower_callback(){
     debugf("Lower limit edge");
+    fsm_signal(LOWER_LIMIT);
 }
 
 void upper_callback(){
     debugf("Upper limit edge");
+    fsm_signal(UPPER_LIMIT);
+}
+
+void state_change_callback(state_t old, state_t new){
+    debugf("State %s -> %s", fsm_state_name(old), fsm_state_name(new));
+    
+    msgOut.data = fsm_current_state();
+    rcl_ret_t ret = rcl_publish(&publisher, &msgOut, NULL);
 }
 
 int main()
@@ -94,6 +102,8 @@ int main()
     init_limit(&upperLimit, UPPER_LIMIT_PIN, upper_callback);
 
     init_motor(&motor, MOTOR_PWM_PIN, MOTOR_FWD_PIN, MOTOR_REV_PIN);
+
+    fsm_init(state_change_callback);
 
     rcl_timer_t timer;
     rcl_node_t node;
@@ -154,6 +164,7 @@ int main()
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
         update_limit(&upperLimit);
         update_limit(&lowerLimit);
+        fsm_update(&motor, &upperLimit, &lowerLimit);
     }
     return 0;
 }

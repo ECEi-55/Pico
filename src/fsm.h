@@ -54,4 +54,15 @@ state_t fsm_current_state();
 */
 void fsm_signal(signal_t signal);
 
+/**
+ * @brief Get the name of a state
+ * @param state State to get name of
+*/
+const char* fsm_state_name(state_t state);
+
+/**
+ * @brief Get the name of a signal
+ * @param signal Signal to get name of
+*/
+const char* fsm_signal_name(signal_t signal);
 #endif

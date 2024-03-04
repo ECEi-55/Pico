@@ -11,6 +11,15 @@ uint _raiseCount;
 
 stateChangeCallback_t _stateChangeCallback;
 
+// Make sure these match the order in the header
+const char* STATE_NAMES[] = {
+    "IDLE", "ACTIVE", "RETRACT", "STOW", "EMPTY"
+};
+const char* SIGNAL_NAMES[] = {
+    "START", "RAISE", "STOP", "RESET", "LOWER LIMIT", "UPPER LIMIT"
+};
+
+
 void _change_state(state_t newState){
     state_t old = _currentState;
     _currentState = newState;
@@ -78,4 +87,12 @@ void fsm_signal(signal_t signal) {
             if(_currentState != EMPTY)
                 _change_state(IDLE);
     }
+}
+
+const char* fsm_state_name(state_t state) {
+    return STATE_NAMES[state];
+}
+
+const char* fsm_signal_name(signal_t signal) {
+    return SIGNAL_NAMES[signal];
 }

@@ -50,7 +50,7 @@ void fsm_update(motor_t *motor, limit_t *upperLimit, limit_t *lowerLimit) {
             // When retracting, raise a bit
             motor_set(motor, upperLimit->isClosed ? 0 : -0.5);
             if(++_raiseCount > RAISE_DURATION){
-                _change_state(IDLE);
+                fsm_signal(RAISE_TIMEOUT);
             }
             break;
         case STOW:
@@ -89,10 +89,16 @@ void fsm_signal(signal_t signal) {
         case LOWER_LIMIT:
             // When loewr limit hit, start retracting and set empty flag
             _change_state(EMPTY);
+            break;
         case UPPER_LIMIT:
             // When upper limit hit, switch to idle if not in empty state
             if(_currentState != EMPTY)
                 _change_state(IDLE);
+            break;
+        case RAISE_TIMEOUT:
+            if(_currentState == RETRACT)
+                _change_state(IDLE);
+            break;
     }
 }
 

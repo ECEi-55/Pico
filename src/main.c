@@ -97,10 +97,10 @@ int main()
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);
 
-    init_limit(&lowerLimit, LOWER_LIMIT_PIN, lower_callback);
-    init_limit(&upperLimit, UPPER_LIMIT_PIN, upper_callback);
+    limit_init(&lowerLimit, LOWER_LIMIT_PIN, lower_callback);
+    limit_init(&upperLimit, UPPER_LIMIT_PIN, upper_callback);
 
-    init_motor(&motor, MOTOR_PWM_PIN, MOTOR_FWD_PIN, MOTOR_REV_PIN);
+    motor_init(&motor, MOTOR_PWM_PIN, MOTOR_FWD_PIN, MOTOR_REV_PIN);
 
     fsm_init(state_change_callback);
 
@@ -161,8 +161,8 @@ int main()
     while (true)
     {
         rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
-        update_limit(&upperLimit);
-        update_limit(&lowerLimit);
+        limit_update(&upperLimit);
+        limit_update(&lowerLimit);
         fsm_update(&motor, &upperLimit, &lowerLimit);
     }
     return 0;

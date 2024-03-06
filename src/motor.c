@@ -5,7 +5,7 @@
 
 #define MAX_WRAP 1000
 
-void init_motor(motor_t *motor, uint pwmPin, uint fwdPin, uint revPin){
+void motor_init(motor_t *motor, uint pwmPin, uint fwdPin, uint revPin){
     // Configure the pico pins
     gpio_init(pwmPin);
     gpio_set_dir(pwmPin, GPIO_OUT);
@@ -34,10 +34,10 @@ void init_motor(motor_t *motor, uint pwmPin, uint fwdPin, uint revPin){
     motor->_revPin = revPin;
 
     // Set motor to stopped
-    set_motor(motor, 0);
+    motor_set(motor, 0);
 }
 
-void set_motor(motor_t *motor, float output) {
+void motor_set(motor_t *motor, float output) {
     gpio_put(motor->_fwdPin, output > 0);
     gpio_put(motor->_revPin, output < 0);
 

@@ -17,7 +17,7 @@ typedef struct {
  * @param fwdPin Forward input put, IN1 or IN3 on l298n
  * @param revPin Reverse input pin, IN2 or IN4 on l298n
  */
-void init_motor(motor_t *motor, uint pwmPin, uint fwdPin, uint revPin);
+void motor_init(motor_t *motor, uint pwmPin, uint fwdPin, uint revPin);
 
 /**
  * @brief Set the motor output
@@ -25,6 +25,6 @@ void init_motor(motor_t *motor, uint pwmPin, uint fwdPin, uint revPin);
  * @param motor Motor connection to set
  * @param output Output percent, in range -1 to 1
  */
-void set_motor(motor_t *motor, float output);
+void motor_set(motor_t *motor, float output);
 
 #endif

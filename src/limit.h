@@ -16,13 +16,13 @@ typedef struct {
  * @param ncPin Pin used for normally-closed connection
  * @param pressedCallback Callback fired when limit is pressed
  */
-void init_limit(limit_t *limit, unsigned char ncPin, void (*pressedCallback)(void));
+void limit_init(limit_t *limit, unsigned char ncPin, void (*pressedCallback)(void));
 
 /**
  * @brief 
  * 
  * @param limit 
  */
-void update_limit(limit_t *limit);
+void limit_update(limit_t *limit);
 
 #endif

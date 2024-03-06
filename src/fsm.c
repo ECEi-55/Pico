@@ -43,26 +43,17 @@ state_t fsm_current_state() {
 void fsm_update(motor_t *motor, limit_t *upperLimit, limit_t *lowerLimit) {
     switch(_currentState) {
         case ACTIVE:
-            // When empty or     stowing, lower applicator until the limit is hit
-            if(lowerLimit->isClosed){
-                motor_set(motor, 0);
-                _change_state(EMPTY);
-            }
-            else {
-                motor_set(motor, ACTIVE_SPEED);
-            }
+            // When empty or stowing, lower applicator until the limit is hit
+            motor_set(motor, lowerLimit->isClosed ? 0 : 1);
             break;
         case RETRACT:
             // When retracting, raise a bit
-            motor_set(motor, upperLimit->isClosed ? 0 : -RETRACT_SPEED);
-            if(++_raiseCount > RAISE_DURATION || upperLimit->isClosed){
+            motor_set(motor, upperLimit->isClosed ? 0 : -0.5);
+            if(++_raiseCount > RAISE_DURATION){
                 _change_state(IDLE);
             }
             break;
         case STOW:
-            if(upperLimit->isClosed)
-                _change_state(IDLE);
-            // Fallthrough to common logic
         case EMPTY:
             // When empty or stowing, raise applicator until at limit
             motor_set(motor, upperLimit->isClosed ? 0 : -RAISE_SPEED);

@@ -43,7 +43,7 @@ state_t fsm_current_state() {
 void fsm_update(motor_t *motor, limit_t *upperLimit, limit_t *lowerLimit) {
     switch(_currentState) {
         case ACTIVE:
-            // When empty or stowing, lower applicator until the limit is hit
+            // When empty or     stowing, lower applicator until the limit is hit
             if(lowerLimit->isClosed){
                 motor_set(motor, 0);
                 _change_state(EMPTY);
@@ -81,12 +81,15 @@ void fsm_signal(signal_t signal) {
                 _change_state(ACTIVE);
             break;
         case RAISE:
-            _raiseCount = 0;
-            _change_state(RETRACT);
+            if(_currentState == ACTIVE || _currentState == IDLE){
+                _raiseCount = 0;
+                _change_state(RETRACT);
+            }
             break;
         case STOP:
             // If stop signal received, begin stowing the manipulator
-            _change_state(STOW);
+            if(_currentState != EMPTY)
+                _change_state(STOW);
             break;
         case RESET:
             if(_currentState == EMPTY)

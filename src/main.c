@@ -24,8 +24,8 @@ const unsigned char MOTOR_PWM_PIN = 4;
 const unsigned char MOTOR_FWD_PIN = 6;
 const unsigned char MOTOR_REV_PIN = 8;
 
-rcl_publisher_t publisher, debugPublisher;
-rcl_subscription_t subscriber;
+rcl_publisher_t statePublisher, debugPublisher;
+rcl_subscription_t signalSubscriber;
 std_msgs__msg__Int32 msgOut, msgIn;
 std_msgs__msg__String debug;
 rmw_message_info_t info;
@@ -56,13 +56,12 @@ void debugf(const char* format, ...){
 void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
     msgOut.data = fsm_current_state();
-    rcl_ret_t ret = rcl_publish(&publisher, &msgOut, NULL);
+    rcl_ret_t ret = rcl_publish(&statePublisher, &msgOut, NULL);
 }
 
-void led_callback() {
-    rcl_ret_t ret = rcl_take(&subscriber, &msgIn, &info, NULL);
-    debugf("Message callback\tstat: %d\tdata:%d", ret, msgIn.data);
-    debugf("FSM sig sent %s", fsm_signal_name(msgIn.data));
+void signalSub_callback() {
+    rcl_ret_t ret = rcl_take(&signalSubscriber, &msgIn, &info, NULL);
+    debugf("FSM sig recieved %s", fsm_signal_name(msgIn.data));
     fsm_signal(msgIn.data);
 }
 
@@ -80,7 +79,7 @@ void state_change_callback(state_t old, state_t new){
     debugf("State %s -> %s", fsm_state_name(old), fsm_state_name(new));
     
     msgOut.data = fsm_current_state();
-    rcl_ret_t ret = rcl_publish(&publisher, &msgOut, NULL);
+    rcl_ret_t ret = rcl_publish(&statePublisher, &msgOut, NULL);
 }
 
 int main()
@@ -129,10 +128,10 @@ int main()
 
     rclc_node_init_default(&node, "pico_node", "", &support);
     rclc_publisher_init_default(
-        &publisher,
+        &statePublisher,
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-        "led_publisher");
+        "current_state");
     rclc_publisher_init_default(
         &debugPublisher,
         &node,
@@ -140,10 +139,10 @@ int main()
         "debug");
     debugf("Init");
     ret = rclc_subscription_init_default(
-        &subscriber,
+        &signalSubscriber,
         &node,
         ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
-        "led_subscriber");    
+        "signal");    
     debugf("Subscription created\tstat: %d", ret);
 
     rclc_timer_init_default(
@@ -155,7 +154,7 @@ int main()
     rclc_executor_init(&executor, &support.context, 2, &allocator);
     rclc_executor_add_timer(&executor, &timer);
     ret = rclc_executor_add_subscription(
-        &executor, &subscriber, &msgIn, &led_callback, ON_NEW_DATA);
+        &executor, &signalSubscriber, &msgIn, &signalSub_callback, ON_NEW_DATA);
     debugf("Callback set\tstat: %d", ret);
 
     msgOut.data = ledState;

@@ -6,6 +6,8 @@ project(applicator C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
 
+set(PICO_BOARD pico_w)
+
 pico_sdk_init()
 
 link_directories(libmicroros)
@@ -14,12 +16,12 @@ add_executable(applicator
     ${SourceFiles}
 )
 target_link_libraries(applicator
-    pico_stdlib hardware_pwm
+    pico_stdlib hardware_pwm pico_cyw43_arch_lwip_threadsafe_background pico_lwip
     microros
 )
 
 target_include_directories(applicator PUBLIC
-    libmicroros/include
+    libmicroros/include src
 )
 
 SET(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -ffunction-sections -fdata-sections")

@@ -11,10 +11,14 @@
 
 #include "pico/stdlib.h"
 #include "pico_uart_transports.h"
+#include "pico/cyw43_arch.h"
+#include "lwip/netif.h"
+#include "lwipopts.h"
 
 #include "limit.h"
 #include "motor.h"
 #include "fsm.h"
+
 
 const uint LED_PIN = 0;
 const unsigned char LOWER_LIMIT_PIN = 18;
@@ -34,6 +38,7 @@ limit_t lowerLimit, upperLimit;
 motor_t motor;
 
 volatile int ledState = 0;
+volatile int wifiLED = 0;
 
 void debugf(const char* format, ...){
     char str[128];
@@ -57,6 +62,9 @@ void timer_callback(rcl_timer_t *timer, int64_t last_call_time)
 {
     msgOut.data = fsm_current_state();
     rcl_ret_t ret = rcl_publish(&publisher, &msgOut, NULL);
+    
+    cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, wifiLED);
+    wifiLED = ~wifiLED;
 }
 
 void led_callback() {
@@ -94,6 +102,8 @@ int main()
 		pico_serial_transport_write,
 		pico_serial_transport_read
 	);
+
+    debugf("Wifi Init %d", cyw43_arch_init());
 
     gpio_init(LED_PIN);
     gpio_set_dir(LED_PIN, GPIO_OUT);

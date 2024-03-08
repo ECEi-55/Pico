@@ -2,16 +2,17 @@
 #include "fsm.h"
 #include "limit.h"
 #include "motor.h"
+#include "pico/stdlib.h"
 
 #define ACTIVE_SPEED 0.4
 #define RAISE_SPEED 1
 #define RETRACT_SPEED RAISE_SPEED / 2.0
 
-// TODO: Set a value that works, find a way that's less linked to calls to fsm_update?
-#define RAISE_DURATION 1000
+// Delay in us = ms * 1000ms/us
+#define RAISE_DURATION 1000 * 1000
 
 state_t _currentState;
-uint _raiseCount;
+uint64_t _raiseTimeout;
 
 stateChangeCallback_t _stateChangeCallback;
 
@@ -49,7 +50,7 @@ void fsm_update(motor_t *motor, limit_t *upperLimit, limit_t *lowerLimit) {
         case RETRACT:
             // When retracting, raise a bit
             motor_set(motor, upperLimit->isClosed ? 0 : -0.5);
-            if(++_raiseCount > RAISE_DURATION){
+            if(time_us_64() > _raiseTimeout){
                 fsm_signal(RAISE_TIMEOUT);
             }
             break;
@@ -73,7 +74,7 @@ void fsm_signal(signal_t signal) {
             break;
         case RAISE:
             if(_currentState == ACTIVE || _currentState == IDLE){
-                _raiseCount = 0;
+                _raiseTimeout = time_us_64() + RAISE_DURATION;
                 _change_state(RETRACT);
             }
             break;

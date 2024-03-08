@@ -3,9 +3,9 @@
 #include "limit.h"
 #include "motor.h"
 
-#define ACTIVE_SPEED 0.5
+#define ACTIVE_SPEED 0.4
 #define RAISE_SPEED 1
-#define RETRACT_SPEED ACTIVE_SPEED / 2.0
+#define RETRACT_SPEED RAISE_SPEED / 2.0
 
 // TODO: Set a value that works, find a way that's less linked to calls to fsm_update?
 #define RAISE_DURATION 1000
@@ -44,7 +44,7 @@ void fsm_update(motor_t *motor, limit_t *upperLimit, limit_t *lowerLimit) {
     switch(_currentState) {
         case ACTIVE:
             // When empty or stowing, lower applicator until the limit is hit
-            motor_set(motor, lowerLimit->isClosed ? 0 : 1);
+            motor_set(motor, lowerLimit->isClosed ? 0 : ACTIVE_SPEED);
             break;
         case RETRACT:
             // When retracting, raise a bit

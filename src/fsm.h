@@ -24,7 +24,8 @@ typedef enum signal_t {
     STOP,
     RESET,
     LOWER_LIMIT,
-    UPPER_LIMIT
+    UPPER_LIMIT,
+    RAISE_TIMEOUT
 } signal_t;
 
 /**

@@ -2,12 +2,17 @@
 #include "fsm.h"
 #include "limit.h"
 #include "motor.h"
+#include "pico/stdlib.h"
 
-// TODO: Set a value that works, find a way that's less linked to calls to fsm_update?
-#define RAISE_DURATION 1000
+#define ACTIVE_SPEED 0.425
+#define RAISE_SPEED 0.5
+#define RETRACT_SPEED RAISE_SPEED / 2.0
+
+// Delay in us = ms * 1000ms/us
+#define RAISE_DURATION 1500 * 1000
 
 state_t _currentState;
-uint _raiseCount;
+uint64_t _raiseTimeout;
 
 stateChangeCallback_t _stateChangeCallback;
 
@@ -39,20 +44,32 @@ state_t fsm_current_state() {
 void fsm_update(motor_t *motor, limit_t *upperLimit, limit_t *lowerLimit) {
     switch(_currentState) {
         case ACTIVE:
-            // When empty or stowing, lower applicator until the limit is hit
-            motor_set(motor, lowerLimit->isClosed ? 0 : 1);
+            if(lowerLimit->isClosed){
+                fsm_signal(LOWER_LIMIT);
+            }
+            if(upperLimit->isClosed){
+                // Give a little extra push to fix sticking at the top
+                motor_set(motor, lowerLimit->isClosed ? 0 : ACTIVE_SPEED * 2);
+            }
+            else {
+                // When empty or stowing, lower applicator until the limit is hit
+                motor_set(motor, lowerLimit->isClosed ? 0 : ACTIVE_SPEED);
+            }
             break;
         case RETRACT:
             // When retracting, raise a bit
             motor_set(motor, upperLimit->isClosed ? 0 : -0.5);
-            if(++_raiseCount > RAISE_DURATION){
-                _change_state(IDLE);
+            if(time_us_64() > _raiseTimeout){
+                fsm_signal(RAISE_TIMEOUT);
             }
             break;
         case STOW:
+            if(upperLimit->isClosed){
+                fsm_signal(UPPER_LIMIT);
+            }
         case EMPTY:
             // When empty or stowing, raise applicator until at limit
-            motor_set(motor, upperLimit->isClosed ? 0 : -1);
+            motor_set(motor, upperLimit->isClosed ? 0 : -RAISE_SPEED);
             break;
         default:
             // Don't move motor in idle state
@@ -68,12 +85,15 @@ void fsm_signal(signal_t signal) {
                 _change_state(ACTIVE);
             break;
         case RAISE:
-            _raiseCount = 0;
-            _change_state(RETRACT);
+            if(_currentState == ACTIVE || _currentState == IDLE){
+                _raiseTimeout = time_us_64() + RAISE_DURATION;
+                _change_state(RETRACT);
+            }
             break;
         case STOP:
             // If stop signal received, begin stowing the manipulator
-            _change_state(STOW);
+            if(_currentState != EMPTY)
+                _change_state(STOW);
             break;
         case RESET:
             if(_currentState == EMPTY)
@@ -82,10 +102,16 @@ void fsm_signal(signal_t signal) {
         case LOWER_LIMIT:
             // When loewr limit hit, start retracting and set empty flag
             _change_state(EMPTY);
+            break;
         case UPPER_LIMIT:
             // When upper limit hit, switch to idle if not in empty state
             if(_currentState != EMPTY)
                 _change_state(IDLE);
+            break;
+        case RAISE_TIMEOUT:
+            if(_currentState == RETRACT)
+                _change_state(IDLE);
+            break;
     }
 }
 

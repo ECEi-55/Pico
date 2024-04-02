@@ -4,12 +4,12 @@
 #include "motor.h"
 #include "pico/stdlib.h"
 
-#define ACTIVE_SPEED 0.4
-#define RAISE_SPEED 1
+#define ACTIVE_SPEED 0.425
+#define RAISE_SPEED 0.5
 #define RETRACT_SPEED RAISE_SPEED / 2.0
 
 // Delay in us = ms * 1000ms/us
-#define RAISE_DURATION 1000 * 1000
+#define RAISE_DURATION 1500 * 1000
 
 state_t _currentState;
 uint64_t _raiseTimeout;
@@ -44,8 +44,17 @@ state_t fsm_current_state() {
 void fsm_update(motor_t *motor, limit_t *upperLimit, limit_t *lowerLimit) {
     switch(_currentState) {
         case ACTIVE:
-            // When empty or stowing, lower applicator until the limit is hit
-            motor_set(motor, lowerLimit->isClosed ? 0 : ACTIVE_SPEED);
+            if(lowerLimit->isClosed){
+                fsm_signal(LOWER_LIMIT);
+            }
+            if(upperLimit->isClosed){
+                // Give a little extra push to fix sticking at the top
+                motor_set(motor, lowerLimit->isClosed ? 0 : ACTIVE_SPEED * 2);
+            }
+            else {
+                // When empty or stowing, lower applicator until the limit is hit
+                motor_set(motor, lowerLimit->isClosed ? 0 : ACTIVE_SPEED);
+            }
             break;
         case RETRACT:
             // When retracting, raise a bit
@@ -55,6 +64,9 @@ void fsm_update(motor_t *motor, limit_t *upperLimit, limit_t *lowerLimit) {
             }
             break;
         case STOW:
+            if(upperLimit->isClosed){
+                fsm_signal(UPPER_LIMIT);
+            }
         case EMPTY:
             // When empty or stowing, raise applicator until at limit
             motor_set(motor, upperLimit->isClosed ? 0 : -RAISE_SPEED);
